@@ -4,3 +4,6 @@ version.h
 *.o
 nsxiv
 icon/img2data
+patches
+scripts
+Makefile.mod
