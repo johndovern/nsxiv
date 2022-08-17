@@ -18,17 +18,18 @@
  */
 
 #include "nsxiv.h"
-#define _WINDOW_CONFIG
+#define INCLUDE_WINDOW_CONFIG
 #include "config.h"
 #include "icon/data.h"
 
+#include <locale.h>
 #include <stdlib.h>
 #include <string.h>
-#include <locale.h>
 #include <unistd.h>
-#include <X11/cursorfont.h>
+
 #include <X11/Xatom.h>
 #include <X11/Xresource.h>
+#include <X11/cursorfont.h>
 
 #if HAVE_LIBFONTS
 #include "utf8.h"
@@ -94,7 +95,7 @@ static const char* win_res(XrmDatabase db, const char *name, const char *def)
 
 	if (db != NULL &&
 	    XrmGetResource(db, name, name, &type, &ret) &&
-	    STREQ(type, "String"))
+	    STREQ(type, "String") && *ret.addr != '\0')
 	{
 		return ret.addr;
 	} else {
@@ -258,7 +259,7 @@ void win_open(win_t *win)
 	             ButtonReleaseMask | ButtonPressMask | KeyPressMask |
 	             PointerMotionMask | StructureNotifyMask);
 
-	for (i = 0; i < ARRLEN(cursors); i++) {
+	for (i = 0; i < (int)ARRLEN(cursors); i++) {
 		if (i != CURSOR_NONE)
 			cursors[i].icon = XCreateFontCursor(e->dpy, cursors[i].name);
 	}
@@ -273,12 +274,12 @@ void win_open(win_t *win)
 	n = icons[ARRLEN(icons)-1].size;
 	icon_data = emalloc((n * n + 2) * sizeof(*icon_data));
 
-	for (i = 0; i < ARRLEN(icons); i++) {
+	for (i = 0; i < (int)ARRLEN(icons); i++) {
 		n = 0;
 		icon_data[n++] = icons[i].size;
 		icon_data[n++] = icons[i].size;
 
-		for (j = 0; j < icons[i].cnt; j++) {
+		for (j = 0; j < (int)icons[i].cnt; j++) {
 			for (c = icons[i].data[j] >> 4; c >= 0; c--)
 				icon_data[n++] = icon_colors[icons[i].data[j] & 0x0F];
 		}
@@ -288,7 +289,7 @@ void win_open(win_t *win)
 	}
 	free(icon_data);
 
-	win_set_title(win, true);
+	win_set_title(win, res_name, strlen(res_name));
 	classhint.res_class = res_class;
 	classhint.res_name = options->res_name != NULL ? options->res_name : res_name;
 	XSetClassHint(e->dpy, win->xwin, &classhint);
@@ -344,7 +345,7 @@ bool win_configure(win_t *win, XConfigureEvent *c)
 {
 	bool changed;
 
-	changed = win->w != c->width || win->h + win->bar.h != c->height;
+	changed = win->w != (unsigned int)c->width || win->h + win->bar.h != (unsigned int)c->height;
 
 	win->x = c->x;
 	win->y = c->y;
@@ -406,7 +407,7 @@ void win_clear(win_t *win)
 static int win_draw_text(win_t *win, XftDraw *d, const XftColor *color,
                          int x, int y, char *text, int len, int w)
 {
-	int err, tw = 0;
+	int err, tw = 0, warned = 0;
 	char *t, *next;
 	uint32_t rune;
 	XftFont *f;
@@ -414,7 +415,14 @@ static int win_draw_text(win_t *win, XftDraw *d, const XftColor *color,
 	XGlyphInfo ext;
 
 	for (t = text; t - text < len; t = next) {
+		err = 0;
 		next = utf8_decode(t, &rune, &err);
+		if (err) {
+			if (!warned)
+				error(0, 0, "error decoding utf8 status-bar text");
+			warned = 1;
+			continue;
+		}
 		if (XftCharExists(win->env.dpy, font, rune)) {
 			f = font;
 		} else { /* fallback font */
@@ -504,17 +512,14 @@ void win_draw_rect(win_t *win, int x, int y, int w, int h, bool fill, int lw,
 		XDrawRectangle(win->env.dpy, win->buf.pm, gc, x, y, w, h);
 }
 
-void win_set_title(win_t *win, bool init)
+void win_set_title(win_t *win, const char *title, size_t len)
 {
-	size_t len, i;
-	unsigned char title[512];
-	int targets[] = { ATOM_WM_NAME, ATOM_WM_ICON_NAME, ATOM__NET_WM_NAME, ATOM__NET_WM_ICON_NAME };
+	int i, targets[] = { ATOM_WM_NAME, ATOM_WM_ICON_NAME, ATOM__NET_WM_NAME, ATOM__NET_WM_ICON_NAME };
 
-	if ((len = get_win_title(title, ARRLEN(title), init)) > 0) {
-		for (i = 0; i < ARRLEN(targets); ++i) {
-			XChangeProperty(win->env.dpy, win->xwin, atoms[targets[i]],
-			                atoms[ATOM_UTF8_STRING], 8, PropModeReplace, title, len);
-		}
+	for (i = 0; i < (int)ARRLEN(targets); ++i) {
+		XChangeProperty(win->env.dpy, win->xwin, atoms[targets[i]],
+		                atoms[ATOM_UTF8_STRING], 8, PropModeReplace,
+		                (unsigned char *)title, len);
 	}
 }
 

@@ -18,13 +18,13 @@
  */
 
 #include "nsxiv.h"
-#define _THUMBS_CONFIG
+#define INCLUDE_THUMBS_CONFIG
 #include "config.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utime.h>
@@ -92,10 +92,8 @@ static void tns_cache_write(Imlib_Image im, const char *filepath, bool force)
 		{
 			if ((dirend = strrchr(cfile, '/')) != NULL) {
 				*dirend = '\0';
-				if (r_mkdir(cfile) == -1) {
-					error(0, errno, "%s", cfile);
+				if (r_mkdir(cfile) < 0)
 					goto end;
-				}
 				*dirend = '/';
 			}
 			imlib_context_set_image(im);
@@ -459,6 +457,7 @@ void tns_render(tns_t *tns)
 	}
 	tns->dirty = false;
 	tns_highlight(tns, *tns->sel, true);
+	title_dirty = true;
 }
 
 void tns_mark(tns_t *tns, int n, bool mark)
@@ -527,6 +526,7 @@ bool tns_move_selection(tns_t *tns, direction_t dir, int cnt)
 		tns_check_view(tns, false);
 		if (!tns->dirty)
 			tns_highlight(tns, *tns->sel, true);
+		title_dirty = true;
 	}
 	return *tns->sel != old;
 }
@@ -561,7 +561,7 @@ bool tns_zoom(tns_t *tns, int d)
 	oldzl = tns->zl;
 	tns->zl += -(d < 0) + (d > 0);
 	tns->zl = MAX(tns->zl, 0);
-	tns->zl = MIN(tns->zl, ARRLEN(thumb_sizes)-1);
+	tns->zl = MIN(tns->zl, (int)ARRLEN(thumb_sizes)-1);
 
 	tns->bw = ((thumb_sizes[tns->zl] - 1) >> 5) + 1;
 	tns->bw = MIN(tns->bw, 4);

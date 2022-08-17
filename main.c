@@ -18,26 +18,37 @@
  */
 
 #include "nsxiv.h"
-#define _MAPPINGS_CONFIG
+#define INCLUDE_MAPPINGS_CONFIG
 #include "commands.h"
 #include "config.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <locale.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <locale.h>
-#include <signal.h>
-#include <poll.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <X11/keysym.h>
+#include <unistd.h>
+
 #include <X11/XF86keysym.h>
+#include <X11/keysym.h>
 
 #define MODMASK(mask) ((mask) & USED_MODMASK)
 #define BAR_SEP "  "
+
+#define TV_DIFF(t1,t2) (((t1)->tv_sec  - (t2)->tv_sec ) * 1000 + \
+                        ((t1)->tv_usec - (t2)->tv_usec) / 1000)
+#define TV_ADD_MSEC(tv,t) {             \
+  (tv)->tv_sec  += (t) / 1000;          \
+  (tv)->tv_usec += (t) % 1000 * 1000;   \
+}
 
 typedef struct {
 	struct timeval when;
@@ -84,6 +95,8 @@ static struct {
 static struct {
 	extcmd_t f;
 } wintitle;
+
+bool title_dirty;
 
 static timeout_t timeouts[] = {
 	{ { 0, 0 }, false, redraw       },
@@ -211,7 +224,7 @@ static bool check_timeouts(int *t)
 	int i = 0, tdiff, tmin = -1;
 	struct timeval now;
 
-	while (i < ARRLEN(timeouts)) {
+	while (i < (int)ARRLEN(timeouts)) {
 		if (timeouts[i].active) {
 			gettimeofday(&now, 0);
 			tdiff = TV_DIFF(&timeouts[i].when, &now);
@@ -231,35 +244,30 @@ static bool check_timeouts(int *t)
 	return tmin > 0;
 }
 
-size_t get_win_title(unsigned char *buf, int len, bool init)
+static size_t get_win_title(char *buf, size_t len)
 {
 	char *argv[8];
 	spawn_t pfd;
 	char w[12] = "", h[12] = "", z[12] = "", fidx[12], fcnt[12];
 	ssize_t n = -1;
 
-	if (buf == NULL || len <= 0)
+	if (wintitle.f.err || buf == NULL || len == 0)
 		return 0;
 
-	if (init) {
-		n = snprintf((char *)buf, len, "%s", options->res_name != NULL ?
-		             options->res_name : "nsxiv");
-	} else if (!wintitle.f.err) {
-		if (mode == MODE_IMAGE) {
-			snprintf(w, ARRLEN(w), "%d", img.w);
-			snprintf(h, ARRLEN(h), "%d", img.h);
-			snprintf(z, ARRLEN(z), "%d", (int)(img.zoom * 100));
-		}
-		snprintf(fidx, ARRLEN(fidx), "%d", fileidx+1);
-		snprintf(fcnt, ARRLEN(fcnt), "%d", filecnt);
-		construct_argv(argv, ARRLEN(argv), wintitle.f.cmd, files[fileidx].path,
-		               fidx, fcnt, w, h, z, NULL);
-		pfd = spawn(wintitle.f.cmd, argv, X_READ);
-		if (pfd.readfd >= 0) {
-			if ((n = read(pfd.readfd, buf, len-1)) > 0)
-				buf[n] = '\0';
-			close(pfd.readfd);
-		}
+	if (mode == MODE_IMAGE) {
+		snprintf(w, ARRLEN(w), "%d", img.w);
+		snprintf(h, ARRLEN(h), "%d", img.h);
+		snprintf(z, ARRLEN(z), "%d", (int)(img.zoom * 100));
+	}
+	snprintf(fidx, ARRLEN(fidx), "%d", fileidx+1);
+	snprintf(fcnt, ARRLEN(fcnt), "%d", filecnt);
+	construct_argv(argv, ARRLEN(argv), wintitle.f.cmd, files[fileidx].path,
+	               fidx, fcnt, w, h, z, NULL);
+	pfd = spawn(wintitle.f.cmd, argv, X_READ);
+	if (pfd.readfd >= 0) {
+		if ((n = read(pfd.readfd, buf, len-1)) > 0)
+			buf[n] = '\0';
+		close(pfd.readfd);
 	}
 
 	return MAX(0, n);
@@ -342,7 +350,8 @@ void load_image(int new)
 
 	close_info();
 	open_info();
-	arl_setup(&arl, files[fileidx].path);
+	arl_add(&arl, files[fileidx].path);
+	title_dirty = true;
 
 	if (img.multi.cnt > 0 && img.multi.animate)
 		set_timeout(animate, img.multi.frames[img.multi.sel].delay, true);
@@ -425,11 +434,11 @@ int nav_button(void)
 
 	win_cursor_pos(&win, &x, &y);
 	nw = NAV_IS_REL ? win.w * NAV_WIDTH / 100 : NAV_WIDTH;
-	nw = MIN(nw, (win.w + 1) / 2);
+	nw = MIN(nw, ((int)win.w + 1) / 2);
 
 	if (x < nw)
 		return 0;
-	else if (x < win.w-nw)
+	else if (x < (int)win.w - nw)
 		return 1;
 	else
 		return 2;
@@ -451,7 +460,14 @@ void redraw(void)
 		tns_render(&tns);
 	}
 	update_info();
-	win_set_title(&win, false);
+	if (title_dirty) {
+		size_t n;
+		char buf[512];
+
+		if ((n = get_win_title(buf, sizeof(buf))) > 0)
+			win_set_title(&win, buf, n);
+		title_dirty = false;
+	}
 	win_draw(&win);
 	reset_timeout(redraw);
 	reset_cursor();
@@ -562,8 +578,8 @@ static bool run_key_handler(const char *key, unsigned int mask)
 	if (pfd.writefd < 0)
 		return false;
 	if ((pfs = fdopen(pfd.writefd, "w")) == NULL) {
-		close(pfd.writefd);
 		error(0, errno, "open pipe");
+		close(pfd.writefd);
 		return false;
 	}
 
@@ -704,8 +720,10 @@ static void run(void)
 					remove_file(tns.loadnext, false);
 					tns.dirty = true;
 				}
-				if (tns.loadnext >= tns.end)
+				if (tns.loadnext >= tns.end) {
+					open_info();
 					redraw();
+				}
 			} else if (init_thumb) {
 				set_timeout(redraw, TO_REDRAW_THUMBS, false);
 				if (!tns_load(&tns, tns.initnext, false, true))
@@ -901,7 +919,7 @@ int main(int argc, char *argv[])
 		const char *name[] = { "image-info", "thumb-info", "key-handler", "win-title" };
 		const char *s = "/nsxiv/exec/";
 
-		for (i = 0; i < ARRLEN(cmd); i++) {
+		for (i = 0; i < (int)ARRLEN(cmd); i++) {
 			n = strlen(homedir) + strlen(dsuffix) + strlen(s) + strlen(name[i]) + 1;
 			cmd[i]->cmd = emalloc(n);
 			snprintf(cmd[i]->cmd, n, "%s%s%s%s", homedir, dsuffix, s, name[i]);

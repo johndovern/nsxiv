@@ -19,12 +19,13 @@
 
 #include "nsxiv.h"
 
+#include "commands.h"
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/wait.h>
-
-#include "commands.h"
+#include <unistd.h>
 
 extern img_t img;
 extern tns_t tns;
@@ -35,7 +36,7 @@ bool cg_quit(arg_t status)
 	unsigned int i;
 
 	if (options->to_stdout && markcnt > 0) {
-		for (i = 0; i < filecnt; i++) {
+		for (i = 0; i < (unsigned int)filecnt; i++) {
 			if (files[i].flags & FF_MARK)
 				printf("%s%c", files[i].name, options->using_null ? '\0' : '\n');
 		}
@@ -63,6 +64,7 @@ bool cg_switch_mode(arg_t _)
 	}
 	close_info();
 	open_info();
+	title_dirty = true;
 	return true;
 }
 
@@ -81,15 +83,14 @@ bool cg_toggle_fullscreen(arg_t _)
 bool cg_toggle_bar(arg_t _)
 {
 	win_toggle_bar(&win);
-	if (mode == MODE_IMAGE) {
-		if (win.bar.h > 0)
-			open_info();
-		else
-			close_info();
+	if (mode == MODE_IMAGE)
 		img.checkpan = img.dirty = true;
-	} else {
+	else
 		tns.dirty = true;
-	}
+	if (win.bar.h > 0)
+		open_info();
+	else
+		close_info();
 	return true;
 }
 
@@ -317,7 +318,7 @@ bool ci_drag(arg_t drag_mode)
 	float px, py;
 	XEvent e;
 
-	if ((int)(img.w * img.zoom) <= win.w && (int)(img.h * img.zoom) <= win.h)
+	if ((int)(img.w * img.zoom) <= (int)win.w && (int)(img.h * img.zoom) <= (int)win.h)
 		return false;
 
 	win_set_cursor(&win, drag_mode == DRAG_ABSOLUTE ? CURSOR_DRAG_ABSOLUTE : CURSOR_DRAG_RELATIVE);

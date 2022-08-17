@@ -254,6 +254,9 @@ Go
 .I count
 * 10 images forward.
 .TP
+.B Ctrl-6
+Go to the previously viewed image.
+.TP
 Handle multi-frame images:
 .TP
 .B Ctrl-n
@@ -426,7 +429,8 @@ Color of the mark foreground. Defaults to window.foreground
 Please see xrdb(1) on how to change them.
 .SH WINDOW TITLE
 The window title can be replaced with the output of a user-provided script,
-which is called by nsxiv whenever there's a redraw. The path of this script is
+which is called by nsxiv whenever any of the relevant information changes.
+The path of this script is
 .I $XDG_CONFIG_HOME/nsxiv/exec/win-title
 and the arguments given to it (where "Optional" arguments might be empty) are:
 .IP $1 4
@@ -549,12 +553,12 @@ For additional contributors, run `git shortlog -s` in the nsxiv repository.
 .TP
 Website:
 .EE
-https://nsxiv.github.io/nsxiv/
+https://nsxiv.codeberg.page/
 .EX
 .TP
 Source code:
 .EE
-https://github.com/nsxiv/nsxiv
+https://codeberg.org/nsxiv/nsxiv
 .EX
 .SH SEE ALSO
 .BR X (7),

@@ -20,11 +20,9 @@
 #ifndef NSXIV_H
 #define NSXIV_H
 
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <sys/time.h>
-#include <sys/types.h>
+#include <stddef.h>
+
 #include <Imlib2.h>
 #include <X11/Xlib.h>
 
@@ -39,16 +37,7 @@
 #define ABS(a) ((a) > 0 ? (a) : -(a))
 
 #define ARRLEN(a) (sizeof(a) / sizeof((a)[0]))
-
 #define STREQ(s1,s2) (strcmp((s1), (s2)) == 0)
-
-#define TV_DIFF(t1,t2) (((t1)->tv_sec  - (t2)->tv_sec ) * 1000 + \
-                        ((t1)->tv_usec - (t2)->tv_usec) / 1000)
-
-#define TV_ADD_MSEC(tv,t) {             \
-  (tv)->tv_sec  += (t) / 1000;          \
-  (tv)->tv_usec += (t) % 1000 * 1000;   \
-}
 
 typedef enum {
 	MODE_ALL,
@@ -135,12 +124,12 @@ struct arl {
 	int fd;
 	int wd_dir;
 	int wd_file;
-	char *filename;
+	const char *filename;
 };
 
 void arl_init(arl_t*);
 void arl_cleanup(arl_t*);
-void arl_setup(arl_t*, const char* /* result of realpath(3) */);
+void arl_add(arl_t*, const char* /* result of realpath(3) */);
 bool arl_handle(arl_t*);
 
 
@@ -173,9 +162,9 @@ typedef struct {
 
 typedef struct {
 	img_frame_t *frames;
-	int cap;
-	int cnt;
-	int sel;
+	unsigned int cap;
+	unsigned int cnt;
+	unsigned int sel;
 	bool animate;
 	unsigned int framedelay;
 	int length;
@@ -414,8 +403,8 @@ struct win {
 	unsigned int bw;
 
 	struct {
-		int w;
-		int h;
+		unsigned int w;
+		unsigned int h;
 		Pixmap pm;
 	} buf;
 
@@ -438,7 +427,7 @@ void win_toggle_bar(win_t*);
 void win_clear(win_t*);
 void win_draw(win_t*);
 void win_draw_rect(win_t*, int, int, int, int, bool, int, unsigned long);
-void win_set_title(win_t*, bool);
+void win_set_title(win_t*, const char*, size_t);
 void win_set_cursor(win_t*, cursor_t);
 void win_cursor_pos(win_t*, int*, int*);
 
@@ -454,7 +443,6 @@ void clear_resize(void);
 void remove_file(int, bool);
 void set_timeout(timeout_f, int, bool);
 void reset_timeout(timeout_f);
-size_t get_win_title(unsigned char*, int, bool);
 void close_info(void);
 void open_info(void);
 void load_image(int);
@@ -470,5 +458,6 @@ extern int alternate;
 extern int markcnt;
 extern int markidx;
 extern int prefix;
+extern bool title_dirty;
 
 #endif /* NSXIV_H */
