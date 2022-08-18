@@ -1,0 +1,10 @@
+--- config.mk	2022-08-17 16:28:32.599283862 -0700
++++ config.mk.bak	2022-08-17 16:43:13.752635548 -0700
+@@ -3,6 +3,7 @@
+ 
+ # PREFIX for install
+ PREFIX = /usr/local
++USRBIN = /home/$$SUDO_USER/.local/bin
+ MANPREFIX = $(PREFIX)/share/man
+ EGPREFIX = $(PREFIX)/share/doc/nsxiv/examples
+ 

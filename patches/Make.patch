@@ -1,0 +1,27 @@
+--- Makefile	2022-08-17 16:28:32.599283862 -0700
++++ Makefile.mod	2022-08-17 16:46:07.842639223 -0700
+@@ -89,6 +89,11 @@
+ 	mkdir -p $(DESTDIR)$(PREFIX)/bin
+ 	cp nsxiv $(DESTDIR)$(PREFIX)/bin/
+ 	chmod 755 $(DESTDIR)$(PREFIX)/bin/nsxiv
++	@echo "INSTALL .local/bin/nsxiv-opts"
++	mkdir -p $(USRBIN)
++	cp scripts/nsxiv-opts $(USRBIN)/
++	chmod 755 $(USRBIN)
++	chown $$SUDO_USER:wheel $(USRBIN)/nsxiv-opts
+ 	@echo "INSTALL nsxiv.1"
+ 	mkdir -p $(DESTDIR)$(MANPREFIX)/man1
+ 	sed "s!EGPREFIX!$(EGPREFIX)!g; s!PREFIX!$(PREFIX)!g; s!VERSION!$(VERSION)!g" \
+@@ -102,10 +107,11 @@
+ uninstall: uninstall-icon
+ 	@echo "REMOVE bin/nsxiv"
+ 	rm -f $(DESTDIR)$(PREFIX)/bin/nsxiv
++	@echo "REMOVE .local/bin/nsxiv-opts"
++	rm -f $(USRBIN)/nsxiv-opts
+ 	@echo "REMOVE nsxiv.1"
+ 	rm -f $(DESTDIR)$(MANPREFIX)/man1/nsxiv.1
+ 	@echo "REMOVE nsxiv.desktop"
+ 	rm -f $(DESTDIR)$(PREFIX)/share/applications/nsxiv.desktop
+ 	@echo "REMOVE share/nsxiv/"
+ 	rm -rf $(DESTDIR)$(EGPREFIX)
+-

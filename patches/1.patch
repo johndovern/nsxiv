@@ -1,0 +1,32 @@
+--- config.def.h	2022-02-23 17:48:06.806870193 -0800
++++ config.def.h-backup	2022-02-23 17:57:49.506904093 -0800
+@@ -96,7 +96,7 @@
+ 	{ ControlMask,  XK_Up,            g_scroll_screen,      DIR_UP },
+ 	{ ControlMask,  XK_l,             g_scroll_screen,      DIR_RIGHT },
+ 	{ ControlMask,  XK_Right,         g_scroll_screen,      DIR_RIGHT },
+-	{ 0,            XK_plus,          g_zoom,               +1 },
++	{ 0,            XK_plus,          i_set_zoom,           100 },
+ 	{ 0,            XK_KP_Add,        g_zoom,               +1 },
+ 	{ 0,            XK_minus,         g_zoom,               -1 },
+ 	{ 0,            XK_KP_Subtract,   g_zoom,               -1 },
+@@ -113,8 +113,10 @@
+ 	{ 0,            XK_h,             t_move_sel,           DIR_LEFT },
+ 	{ 0,            XK_Left,          t_move_sel,           DIR_LEFT },
+ 	{ 0,            XK_j,             t_move_sel,           DIR_DOWN },
++	{ ShiftMask,    XK_J,             g_zoom,               -1 },
+ 	{ 0,            XK_Down,          t_move_sel,           DIR_DOWN },
+ 	{ 0,            XK_k,             t_move_sel,           DIR_UP },
++	{ ShiftMask,    XK_K,             g_zoom,               +1 },
+ 	{ 0,            XK_Up,            t_move_sel,           DIR_UP },
+ 	{ 0,            XK_l,             t_move_sel,           DIR_RIGHT },
+ 	{ 0,            XK_Right,         t_move_sel,           DIR_RIGHT },
+@@ -145,8 +147,7 @@
+ 	{ 0,            XK_J,             i_scroll_to_edge,     DIR_DOWN },
+ 	{ 0,            XK_K,             i_scroll_to_edge,     DIR_UP },
+ 	{ 0,            XK_L,             i_scroll_to_edge,     DIR_RIGHT },
+-	{ 0,            XK_z,             i_scroll_to_center,   None },
+-	{ 0,            XK_equal,         i_set_zoom,           100 },
++	{ 0,            XK_equal,         g_zoom,               +1 },
+ 	{ 0,            XK_w,             i_fit_to_win,         SCALE_DOWN },
+ 	{ 0,            XK_W,             i_fit_to_win,         SCALE_FIT },
+ 	{ 0,            XK_F,             i_fit_to_win,         SCALE_FILL },
