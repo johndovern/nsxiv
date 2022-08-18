@@ -3,6 +3,7 @@ VERSION = 30
 
 # PREFIX for install
 PREFIX = /usr/local
+USRBIN = /home/$$SUDO_USER/.local/bin
 MANPREFIX = $(PREFIX)/share/man
 EGPREFIX = $(PREFIX)/share/doc/nsxiv/examples
 
